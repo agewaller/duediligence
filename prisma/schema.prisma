@@ -102,3 +102,12 @@ model FollowUp {
   response  String
   createdAt DateTime @default(now())
 }
+
+model SiteSettings {
+  id              String   @id @default("singleton")
+  defaultAiModel  String   @default("claude-sonnet-4-6")
+  anthropicApiKey String?
+  openaiApiKey    String?
+  maxOutputTokens Int      @default(16000)
+  updatedAt       DateTime @updatedAt
+}

@@ -10,7 +10,7 @@ export default function Navbar() {
   const { lang, setLang } = useLang();
 
   const user = session?.user as { role?: string } | undefined;
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "admin";
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-md">

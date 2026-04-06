@@ -6,16 +6,27 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 
-function getAIModel(aiModel: string) {
+async function getApiKeys() {
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "singleton" },
+  });
+  return {
+    anthropicApiKey: settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || "",
+    openaiApiKey: settings?.openaiApiKey || process.env.OPENAI_API_KEY || "",
+    maxOutputTokens: settings?.maxOutputTokens || 16000,
+  };
+}
+
+function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiKey: string }) {
   if (aiModel.startsWith("claude")) {
-    const anthropic = createAnthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    if (!keys.anthropicApiKey) throw new Error("Anthropic API key not configured");
+    const anthropic = createAnthropic({ apiKey: keys.anthropicApiKey });
     return anthropic(aiModel);
   }
 
   if (aiModel.startsWith("gpt") || aiModel.startsWith("o")) {
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    if (!keys.openaiApiKey) throw new Error("OpenAI API key not configured");
+    const openai = createOpenAI({ apiKey: keys.openaiApiKey });
     return openai(aiModel);
   }
 
@@ -35,7 +46,6 @@ export async function POST(
     const userId = (session.user as Record<string, unknown>).id as string;
     const { id } = await params;
 
-    // Load the original report
     const report = await prisma.report.findUnique({ where: { id } });
 
     if (!report) {
@@ -56,7 +66,6 @@ export async function POST(
       );
     }
 
-    // Build follow-up prompt with original report as context
     const followUpPrompt = [
       `The following is an existing due diligence report for ${report.companyName}:`,
       "",
@@ -69,14 +78,14 @@ export async function POST(
       "Please provide a detailed response based on the original report and the follow-up question above.",
     ].join("\n");
 
-    const model = getAIModel(report.aiModel);
+    const keys = await getApiKeys();
+    const model = getAIModel(report.aiModel, keys);
     const result = await generateText({
       model,
       prompt: followUpPrompt,
-      maxOutputTokens: 16000,
+      maxOutputTokens: keys.maxOutputTokens,
     });
 
-    // Save follow-up
     const followUp = await prisma.followUp.create({
       data: {
         reportId: id,
@@ -89,9 +98,7 @@ export async function POST(
     return NextResponse.json(followUp, { status: 201 });
   } catch (error) {
     console.error("Follow-up analysis failed:", error);
-    return NextResponse.json(
-      { error: "Follow-up analysis failed" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Follow-up analysis failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

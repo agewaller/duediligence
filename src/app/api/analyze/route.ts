@@ -7,16 +7,27 @@ import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 
-function getAIModel(aiModel: string) {
+async function getApiKeys() {
+  const settings = await prisma.siteSettings.findUnique({
+    where: { id: "singleton" },
+  });
+  return {
+    anthropicApiKey: settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || "",
+    openaiApiKey: settings?.openaiApiKey || process.env.OPENAI_API_KEY || "",
+    maxOutputTokens: settings?.maxOutputTokens || 16000,
+  };
+}
+
+function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiKey: string }) {
   if (aiModel.startsWith("claude")) {
-    const anthropic = createAnthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    if (!keys.anthropicApiKey) throw new Error("Anthropic API key not configured");
+    const anthropic = createAnthropic({ apiKey: keys.anthropicApiKey });
     return anthropic(aiModel);
   }
 
   if (aiModel.startsWith("gpt") || aiModel.startsWith("o")) {
-    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    if (!keys.openaiApiKey) throw new Error("OpenAI API key not configured");
+    const openai = createOpenAI({ apiKey: keys.openaiApiKey });
     return openai(aiModel);
   }
 
@@ -69,8 +80,7 @@ export async function POST(request: Request) {
     }
 
     // Build the prompt content with template replacements
-    const languageName =
-      languages[language as LangCode] || language;
+    const languageName = languages[language as LangCode] || language;
     const now = new Date().toISOString().split("T")[0];
 
     const promptContent = prompt.content
@@ -80,12 +90,14 @@ export async function POST(request: Request) {
       .replace(/\{\{LANGUAGE\}\}/g, languageName)
       .replace(/\{\{FIN_DATA\}\}/g, "");
 
-    // Generate text using AI SDK
-    const model = getAIModel(aiModel);
+    // Get API keys from DB settings
+    const keys = await getApiKeys();
+    const model = getAIModel(aiModel, keys);
+
     const result = await generateText({
       model,
       prompt: promptContent,
-      maxOutputTokens: 16000,
+      maxOutputTokens: keys.maxOutputTokens,
     });
 
     // Save report to DB
@@ -104,9 +116,7 @@ export async function POST(request: Request) {
     return NextResponse.json(report, { status: 201 });
   } catch (error) {
     console.error("Analysis failed:", error);
-    return NextResponse.json(
-      { error: "Analysis failed" },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : "Analysis failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
