@@ -6,6 +6,7 @@ import { languages, type LangCode } from "@/lib/i18n";
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 async function getApiKeys() {
   const settings = await prisma.siteSettings.findUnique({
@@ -14,11 +15,15 @@ async function getApiKeys() {
   return {
     anthropicApiKey: settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || "",
     openaiApiKey: settings?.openaiApiKey || process.env.OPENAI_API_KEY || "",
+    googleApiKey: settings?.googleApiKey || process.env.GOOGLE_AI_API_KEY || "",
     maxOutputTokens: settings?.maxOutputTokens || 16000,
   };
 }
 
-function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiKey: string }) {
+function getAIModel(
+  aiModel: string,
+  keys: { anthropicApiKey: string; openaiApiKey: string; googleApiKey: string }
+) {
   if (aiModel.startsWith("claude")) {
     if (!keys.anthropicApiKey) throw new Error("Anthropic API key not configured");
     const anthropic = createAnthropic({ apiKey: keys.anthropicApiKey });
@@ -29,6 +34,12 @@ function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiK
     if (!keys.openaiApiKey) throw new Error("OpenAI API key not configured");
     const openai = createOpenAI({ apiKey: keys.openaiApiKey });
     return openai(aiModel);
+  }
+
+  if (aiModel.startsWith("gemini")) {
+    if (!keys.googleApiKey) throw new Error("Google AI API key not configured");
+    const google = createGoogleGenerativeAI({ apiKey: keys.googleApiKey });
+    return google(aiModel);
   }
 
   throw new Error(`Unsupported AI model: ${aiModel}`);
@@ -70,7 +81,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Load prompt
     const prompt = await prisma.prompt.findUnique({
       where: { id: promptId },
     });
@@ -79,7 +89,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
     }
 
-    // Build the prompt content with template replacements
     const languageName = languages[language as LangCode] || language;
     const now = new Date().toISOString().split("T")[0];
 
@@ -90,7 +99,6 @@ export async function POST(request: Request) {
       .replace(/\{\{LANGUAGE\}\}/g, languageName)
       .replace(/\{\{FIN_DATA\}\}/g, "");
 
-    // Get API keys from DB settings
     const keys = await getApiKeys();
     const model = getAIModel(aiModel, keys);
 
@@ -100,7 +108,6 @@ export async function POST(request: Request) {
       maxOutputTokens: keys.maxOutputTokens,
     });
 
-    // Save report to DB
     const report = await prisma.report.create({
       data: {
         userId,

@@ -108,6 +108,7 @@ model SiteSettings {
   defaultAiModel  String   @default("claude-sonnet-4-6")
   anthropicApiKey String?
   openaiApiKey    String?
+  googleApiKey    String?
   maxOutputTokens Int      @default(16000)
   updatedAt       DateTime @updatedAt
 }

@@ -27,6 +27,7 @@ export async function GET() {
           defaultAiModel: "claude-sonnet-4-6",
           anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
           openaiApiKey: process.env.OPENAI_API_KEY || null,
+          googleApiKey: process.env.GOOGLE_AI_API_KEY || null,
           maxOutputTokens: 16000,
         },
       });
@@ -36,9 +37,11 @@ export async function GET() {
       defaultAiModel: settings.defaultAiModel,
       anthropicApiKey: settings.anthropicApiKey ? maskKey(settings.anthropicApiKey) : "",
       openaiApiKey: settings.openaiApiKey ? maskKey(settings.openaiApiKey) : "",
+      googleApiKey: settings.googleApiKey ? maskKey(settings.googleApiKey) : "",
       maxOutputTokens: settings.maxOutputTokens,
       hasAnthropicKey: !!settings.anthropicApiKey,
       hasOpenaiKey: !!settings.openaiApiKey,
+      hasGoogleKey: !!settings.googleApiKey,
     });
   } catch (error) {
     console.error("Failed to fetch settings:", error);
@@ -53,12 +56,13 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { defaultAiModel, anthropicApiKey, openaiApiKey, maxOutputTokens } = body;
+    const { defaultAiModel, anthropicApiKey, openaiApiKey, googleApiKey, maxOutputTokens } = body;
 
     const data: Record<string, unknown> = {};
     if (defaultAiModel !== undefined) data.defaultAiModel = defaultAiModel;
     if (anthropicApiKey !== undefined && anthropicApiKey !== "") data.anthropicApiKey = anthropicApiKey;
     if (openaiApiKey !== undefined && openaiApiKey !== "") data.openaiApiKey = openaiApiKey;
+    if (googleApiKey !== undefined && googleApiKey !== "") data.googleApiKey = googleApiKey;
     if (maxOutputTokens !== undefined) data.maxOutputTokens = Number(maxOutputTokens);
 
     const settings = await prisma.siteSettings.upsert({
@@ -69,6 +73,7 @@ export async function PUT(request: Request) {
         defaultAiModel: (data.defaultAiModel as string) || "claude-sonnet-4-6",
         anthropicApiKey: (data.anthropicApiKey as string) || null,
         openaiApiKey: (data.openaiApiKey as string) || null,
+        googleApiKey: (data.googleApiKey as string) || null,
         maxOutputTokens: (data.maxOutputTokens as number) || 16000,
       },
     });
@@ -77,9 +82,11 @@ export async function PUT(request: Request) {
       defaultAiModel: settings.defaultAiModel,
       anthropicApiKey: settings.anthropicApiKey ? maskKey(settings.anthropicApiKey) : "",
       openaiApiKey: settings.openaiApiKey ? maskKey(settings.openaiApiKey) : "",
+      googleApiKey: settings.googleApiKey ? maskKey(settings.googleApiKey) : "",
       maxOutputTokens: settings.maxOutputTokens,
       hasAnthropicKey: !!settings.anthropicApiKey,
       hasOpenaiKey: !!settings.openaiApiKey,
+      hasGoogleKey: !!settings.googleApiKey,
     });
   } catch (error) {
     console.error("Failed to update settings:", error);
