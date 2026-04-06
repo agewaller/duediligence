@@ -30,6 +30,8 @@ interface Settings {
   maxOutputTokens: number;
   hasAnthropicKey: boolean;
   hasOpenaiKey: boolean;
+  hasGoogleKey: boolean;
+  googleApiKey: string;
 }
 
 export default function AdminPage() {
@@ -54,9 +56,12 @@ export default function AdminPage() {
     maxOutputTokens: 16000,
     hasAnthropicKey: false,
     hasOpenaiKey: false,
+    hasGoogleKey: false,
+    googleApiKey: "",
   });
   const [newAnthropicKey, setNewAnthropicKey] = useState("");
   const [newOpenaiKey, setNewOpenaiKey] = useState("");
+  const [newGoogleKey, setNewGoogleKey] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
 
@@ -95,6 +100,7 @@ export default function AdminPage() {
     };
     if (newAnthropicKey) body.anthropicApiKey = newAnthropicKey;
     if (newOpenaiKey) body.openaiApiKey = newOpenaiKey;
+    if (newGoogleKey) body.googleApiKey = newGoogleKey;
 
     const res = await fetch("/api/settings", {
       method: "PUT",
@@ -106,6 +112,7 @@ export default function AdminPage() {
       setSettings(data);
       setNewAnthropicKey("");
       setNewOpenaiKey("");
+      setNewGoogleKey("");
       setSettingsMsg("Settings saved successfully");
     } else {
       setSettingsMsg("Failed to save settings");
@@ -298,6 +305,34 @@ export default function AdminPage() {
                   />
                 </div>
                 {settings.hasOpenaiKey && (
+                  <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-400">
+                    Active
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Google AI API Key */}
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium text-slate-300">
+                Google AI API Key (Gemini)
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  {settings.hasGoogleKey && (
+                    <p className="mb-2 text-xs text-green-400">
+                      Current: {settings.googleApiKey}
+                    </p>
+                  )}
+                  <input
+                    type="password"
+                    value={newGoogleKey}
+                    onChange={(e) => setNewGoogleKey(e.target.value)}
+                    placeholder={settings.hasGoogleKey ? "Enter new key to replace..." : "AIza..."}
+                    className="w-full rounded-lg border border-slate-600 bg-slate-900 px-4 py-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                {settings.hasGoogleKey && (
                   <span className="rounded-full bg-green-500/20 px-3 py-1 text-xs font-medium text-green-400">
                     Active
                   </span>

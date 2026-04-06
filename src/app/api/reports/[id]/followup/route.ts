@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 async function getApiKeys() {
   const settings = await prisma.siteSettings.findUnique({
@@ -13,11 +14,15 @@ async function getApiKeys() {
   return {
     anthropicApiKey: settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || "",
     openaiApiKey: settings?.openaiApiKey || process.env.OPENAI_API_KEY || "",
+    googleApiKey: settings?.googleApiKey || process.env.GOOGLE_AI_API_KEY || "",
     maxOutputTokens: settings?.maxOutputTokens || 16000,
   };
 }
 
-function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiKey: string }) {
+function getAIModel(
+  aiModel: string,
+  keys: { anthropicApiKey: string; openaiApiKey: string; googleApiKey: string }
+) {
   if (aiModel.startsWith("claude")) {
     if (!keys.anthropicApiKey) throw new Error("Anthropic API key not configured");
     const anthropic = createAnthropic({ apiKey: keys.anthropicApiKey });
@@ -28,6 +33,12 @@ function getAIModel(aiModel: string, keys: { anthropicApiKey: string; openaiApiK
     if (!keys.openaiApiKey) throw new Error("OpenAI API key not configured");
     const openai = createOpenAI({ apiKey: keys.openaiApiKey });
     return openai(aiModel);
+  }
+
+  if (aiModel.startsWith("gemini")) {
+    if (!keys.googleApiKey) throw new Error("Google AI API key not configured");
+    const google = createGoogleGenerativeAI({ apiKey: keys.googleApiKey });
+    return google(aiModel);
   }
 
   throw new Error(`Unsupported AI model: ${aiModel}`);
