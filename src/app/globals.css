@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Markdown prose styling for dark theme */
+.prose-dark {
+  color: #cbd5e1;
+}
+.prose-dark h1,
+.prose-dark h2,
+.prose-dark h3,
+.prose-dark h4,
+.prose-dark h5,
+.prose-dark h6 {
+  color: #f1f5f9;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose-dark h1 { font-size: 2em; }
+.prose-dark h2 { font-size: 1.5em; border-bottom: 1px solid #334155; padding-bottom: 0.3em; }
+.prose-dark h3 { font-size: 1.25em; }
+.prose-dark p { margin-bottom: 1em; line-height: 1.75; }
+.prose-dark a { color: #60a5fa; text-decoration: underline; }
+.prose-dark strong { color: #f1f5f9; }
+.prose-dark ul, .prose-dark ol { margin-bottom: 1em; padding-left: 1.5em; }
+.prose-dark li { margin-bottom: 0.25em; }
+.prose-dark ul { list-style-type: disc; }
+.prose-dark ol { list-style-type: decimal; }
+.prose-dark blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1em;
+  color: #94a3b8;
+  font-style: italic;
+  margin-bottom: 1em;
+}
+.prose-dark code {
+  background: #1e293b;
+  padding: 0.15em 0.4em;
+  border-radius: 0.25em;
+  font-size: 0.875em;
+  color: #e2e8f0;
+}
+.prose-dark pre {
+  background: #0f172a;
+  padding: 1em;
+  border-radius: 0.5em;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+.prose-dark pre code {
+  background: none;
+  padding: 0;
+}
+.prose-dark table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+.prose-dark th, .prose-dark td {
+  border: 1px solid #334155;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.prose-dark th {
+  background: #1e293b;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+.prose-dark hr {
+  border-color: #334155;
+  margin: 2em 0;
+}
