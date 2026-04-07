@@ -6,6 +6,7 @@ import { prisma } from "./prisma";
 const ADMIN_EMAILS = ["agewaller@gmail.com"];
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
