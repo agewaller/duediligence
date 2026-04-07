@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { generateText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 
 async function getApiKeys() {
-  const settings = await prisma.siteSettings.findUnique({
-    where: { id: "singleton" },
-  });
+  const adminDb = getAdminDb();
+  const snap = await adminDb.collection("ddSettings").doc("singleton").get();
+  const settings = snap.exists ? snap.data() : null;
   return {
     anthropicApiKey: settings?.anthropicApiKey || process.env.ANTHROPIC_API_KEY || "",
     openaiApiKey: settings?.openaiApiKey || process.env.OPENAI_API_KEY || "",
@@ -28,19 +26,16 @@ function getAIModel(
     const anthropic = createAnthropic({ apiKey: keys.anthropicApiKey });
     return anthropic(aiModel);
   }
-
   if (aiModel.startsWith("gpt") || aiModel.startsWith("o")) {
     if (!keys.openaiApiKey) throw new Error("OpenAI API key not configured");
     const openai = createOpenAI({ apiKey: keys.openaiApiKey });
     return openai(aiModel);
   }
-
   if (aiModel.startsWith("gemini")) {
     if (!keys.googleApiKey) throw new Error("Google AI API key not configured");
     const google = createGoogleGenerativeAI({ apiKey: keys.googleApiKey });
     return google(aiModel);
   }
-
   throw new Error(`Unsupported AI model: ${aiModel}`);
 }
 
@@ -49,20 +44,23 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const idToken = authHeader.split("Bearer ")[1];
+    const decodedToken = await getAdminAuth().verifyIdToken(idToken);
+    const userId = decodedToken.uid;
 
-    const userId = (session.user as Record<string, unknown>).id as string;
     const { id } = await params;
+    const adminDb = getAdminDb();
 
-    const report = await prisma.report.findUnique({ where: { id } });
-
-    if (!report) {
+    const reportDoc = await adminDb.collection("ddReports").doc(id).get();
+    if (!reportDoc.exists) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
+    const report = reportDoc.data()!;
     if (report.userId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -71,10 +69,7 @@ export async function POST(
     const { query, context } = body;
 
     if (!query) {
-      return NextResponse.json(
-        { error: "query is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "query is required" }, { status: 400 });
     }
 
     const followUpPrompt = [
@@ -90,23 +85,25 @@ export async function POST(
     ].join("\n");
 
     const keys = await getApiKeys();
-    const model = getAIModel(report.aiModel, keys);
+    const aiModel = report.aiModel || report.modelId;
+    const model = getAIModel(aiModel, keys);
     const result = await generateText({
       model,
       prompt: followUpPrompt,
       maxOutputTokens: keys.maxOutputTokens,
     });
 
-    const followUp = await prisma.followUp.create({
-      data: {
-        reportId: id,
-        query,
-        context: context || null,
-        response: result.text,
-      },
-    });
+    const followUpId = crypto.randomUUID();
+    const followUpData = {
+      reportId: id,
+      query,
+      context: context || null,
+      response: result.text,
+      createdAt: new Date().toISOString(),
+    };
+    await adminDb.collection("ddFollowUps").doc(followUpId).set(followUpData);
 
-    return NextResponse.json(followUp, { status: 201 });
+    return NextResponse.json({ id: followUpId, ...followUpData }, { status: 201 });
   } catch (error) {
     console.error("Follow-up analysis failed:", error);
     const message = error instanceof Error ? error.message : "Follow-up analysis failed";

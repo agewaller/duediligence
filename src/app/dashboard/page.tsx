@@ -1,12 +1,14 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLang } from "@/components/LanguageContext";
 import { t, languages, LangCode } from "@/lib/i18n";
 import { aiModels } from "@/lib/ai-models";
+import { getPrompts, getUserReports } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
 
 interface Prompt {
   id: string;
@@ -23,7 +25,7 @@ interface Report {
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { lang } = useLang();
 
@@ -37,31 +39,36 @@ export default function DashboardPage() {
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/signin");
-  }, [status, router]);
+    if (!loading && !user) router.push("/auth/signin");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    fetch("/api/prompts")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Prompt[]) => {
-        setPrompts(data);
-        if (data.length > 0) setPromptId(data[0].id);
+    if (!user) return;
+
+    getPrompts()
+      .then((data) => {
+        const promptList = data as Prompt[];
+        setPrompts(promptList);
+        if (promptList.length > 0) setPromptId(promptList[0].id);
       })
       .catch(() => {});
 
-    fetch("/api/reports")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setReports)
+    getUserReports(user.uid)
+      .then((data) => setReports(data as Report[]))
       .catch(() => {});
-  }, []);
+  }, [user]);
 
   const runAnalysis = async () => {
     if (!companyName.trim() || !promptId) return;
     setRunning(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const res = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           companyName: companyName.trim(),
           promptId,
@@ -79,7 +86,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -87,7 +94,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
