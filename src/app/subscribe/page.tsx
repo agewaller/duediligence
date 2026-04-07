@@ -1,11 +1,12 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import { useLang } from "@/components/LanguageContext";
 import { t } from "@/lib/i18n";
+import { getSubscription, upsertSubscription } from "@/lib/firestore";
 
 interface Subscription {
   status: string;
@@ -14,7 +15,7 @@ interface Subscription {
 }
 
 export default function SubscribePage() {
-  const { data: session, status } = useSession();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { lang } = useLang();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -22,36 +23,34 @@ export default function SubscribePage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/signin");
-  }, [status, router]);
+    if (!authLoading && !user) router.push("/auth/signin");
+  }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (!session) return;
-    fetch("/api/subscription")
-      .then((r) => (r.ok ? r.json() : null))
+    if (!user) return;
+    getSubscription(user.uid)
       .then((data) => {
-        setSubscription(data);
+        setSubscription(data as Subscription | null);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [session]);
+  }, [user]);
 
   const handleApprove = async (data: { subscriptionID?: string | null }) => {
-    const res = await fetch("/api/subscription", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    if (!user) return;
+    try {
+      await upsertSubscription(user.uid, {
         subscriptionId: data.subscriptionID,
         status: "ACTIVE",
-      }),
-    });
-    if (res.ok) {
+      });
       setSuccess(true);
       setSubscription({ status: "ACTIVE" });
+    } catch {
+      // ignore
     }
   };
 
-  if (status === "loading" || loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -59,7 +58,7 @@ export default function SubscribePage() {
     );
   }
 
-  if (!session) return null;
+  if (!user) return null;
 
   const isActive = subscription?.status === "ACTIVE";
 

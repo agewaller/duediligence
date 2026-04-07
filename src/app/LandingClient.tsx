@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
+import { getSampleReports } from "@/lib/firestore";
 import { useLang } from "@/components/LanguageContext";
 import { t } from "@/lib/i18n";
 
@@ -16,13 +17,12 @@ interface SampleReport {
 
 export default function LandingClient() {
   const { lang } = useLang();
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [samples, setSamples] = useState<SampleReport[]>([]);
 
   useEffect(() => {
-    fetch("/api/reports/samples")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setSamples)
+    getSampleReports()
+      .then((data) => setSamples(data as SampleReport[]))
       .catch(() => {});
   }, []);
 
@@ -40,7 +40,7 @@ export default function LandingClient() {
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
             <Link
-              href={session ? "/dashboard" : "/auth/signin"}
+              href={user ? "/dashboard" : "/auth/signin"}
               className="rounded-lg bg-blue-600 px-8 py-3 text-lg font-semibold text-white shadow-lg shadow-blue-600/25 transition-all hover:bg-blue-500 hover:shadow-blue-500/30"
             >
               {t("app.cta", lang)}

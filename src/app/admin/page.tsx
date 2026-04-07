@@ -1,11 +1,21 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useLang } from "@/components/LanguageContext";
 import { t } from "@/lib/i18n";
 import { aiModels } from "@/lib/ai-models";
+import {
+  getPrompts,
+  getAllReports,
+  getSiteSettings,
+  updateSiteSettings,
+  createPrompt,
+  updatePrompt,
+  deletePrompt as firestoreDeletePrompt,
+  updateReport,
+} from "@/lib/firestore";
 
 interface Prompt {
   id: string;
@@ -35,7 +45,7 @@ interface Settings {
 }
 
 export default function AdminPage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const { lang } = useLang();
 
@@ -65,31 +75,40 @@ export default function AdminPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
 
-  const user = session?.user as { role?: string } | undefined;
+  useEffect(() => {
+    if (!loading && !user) router.push("/auth/signin");
+    if (!loading && user && user.role !== "admin") router.push("/dashboard");
+  }, [loading, user, router]);
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/signin");
-    if (status === "authenticated" && user?.role !== "admin") router.push("/dashboard");
-  }, [status, user, router]);
+    if (!user || user.role !== "admin") return;
 
-  useEffect(() => {
-    if (status !== "authenticated" || user?.role !== "admin") return;
-
-    fetch("/api/prompts")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setPrompts)
+    getPrompts()
+      .then((data) => setPrompts(data as Prompt[]))
       .catch(() => {});
 
-    fetch("/api/reports?all=true")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setReports)
+    getAllReports()
+      .then((data) => setReports(data as Report[]))
       .catch(() => {});
 
-    fetch("/api/settings")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setSettings(data); })
+    getSiteSettings()
+      .then((data) => {
+        if (data) {
+          const s = data as Record<string, unknown>;
+          setSettings({
+            defaultAiModel: (s.defaultAiModel as string) || "claude-sonnet-4-6",
+            anthropicApiKey: s.anthropicApiKey ? String(s.anthropicApiKey).slice(0, 8) + "..." : "",
+            openaiApiKey: s.openaiApiKey ? String(s.openaiApiKey).slice(0, 8) + "..." : "",
+            googleApiKey: s.googleApiKey ? String(s.googleApiKey).slice(0, 8) + "..." : "",
+            maxOutputTokens: (s.maxOutputTokens as number) || 16000,
+            hasAnthropicKey: !!s.anthropicApiKey,
+            hasOpenaiKey: !!s.openaiApiKey,
+            hasGoogleKey: !!s.googleApiKey,
+          });
+        }
+      })
       .catch(() => {});
-  }, [status, user]);
+  }, [user]);
 
   const saveSettings = async () => {
     setSettingsSaving(true);
@@ -102,19 +121,28 @@ export default function AdminPage() {
     if (newOpenaiKey) body.openaiApiKey = newOpenaiKey;
     if (newGoogleKey) body.googleApiKey = newGoogleKey;
 
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setSettings(data);
+    try {
+      await updateSiteSettings(body);
+      // Refresh settings display
+      const updated = await getSiteSettings();
+      if (updated) {
+        const s = updated as Record<string, unknown>;
+        setSettings({
+          defaultAiModel: (s.defaultAiModel as string) || "claude-sonnet-4-6",
+          anthropicApiKey: s.anthropicApiKey ? String(s.anthropicApiKey).slice(0, 8) + "..." : "",
+          openaiApiKey: s.openaiApiKey ? String(s.openaiApiKey).slice(0, 8) + "..." : "",
+          googleApiKey: s.googleApiKey ? String(s.googleApiKey).slice(0, 8) + "..." : "",
+          maxOutputTokens: (s.maxOutputTokens as number) || 16000,
+          hasAnthropicKey: !!s.anthropicApiKey,
+          hasOpenaiKey: !!s.openaiApiKey,
+          hasGoogleKey: !!s.googleApiKey,
+        });
+      }
       setNewAnthropicKey("");
       setNewOpenaiKey("");
       setNewGoogleKey("");
       setSettingsMsg("Settings saved successfully");
-    } else {
+    } catch {
       setSettingsMsg("Failed to save settings");
     }
     setSettingsSaving(false);
@@ -127,56 +155,53 @@ export default function AdminPage() {
   };
 
   const saveEdit = async (id: string) => {
-    const res = await fetch(`/api/prompts/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editForm),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setPrompts((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    try {
+      await updatePrompt(id, editForm);
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...editForm } : p))
+      );
       setEditingId(null);
+    } catch {
+      // ignore
     }
   };
 
-  const deletePrompt = async (id: string) => {
-    const res = await fetch(`/api/prompts/${id}`, { method: "DELETE" });
-    if (res.ok) {
+  const handleDeletePrompt = async (id: string) => {
+    try {
+      await firestoreDeletePrompt(id);
       setPrompts((prev) => prev.filter((p) => p.id !== id));
+    } catch {
+      // ignore
     }
   };
 
   const addPrompt = async () => {
     if (!newPrompt.name || !newPrompt.content) return;
-    const res = await fetch("/api/prompts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newPrompt),
-    });
-    if (res.ok) {
-      const created = await res.json();
-      setPrompts((prev) => [...prev, created]);
+    try {
+      const id = crypto.randomUUID();
+      await createPrompt(id, newPrompt);
+      setPrompts((prev) => [...prev, { id, ...newPrompt }]);
       setNewPrompt({ name: "", category: "", content: "" });
       setShowAddForm(false);
+    } catch {
+      // ignore
     }
   };
 
   const toggleSample = async (report: Report) => {
-    const res = await fetch(`/api/reports/${report.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isSample: !report.isSample }),
-    });
-    if (res.ok) {
+    try {
+      await updateReport(report.id, { isSample: !report.isSample });
       setReports((prev) =>
         prev.map((r) =>
           r.id === report.id ? { ...r, isSample: !r.isSample } : r
         )
       );
+    } catch {
+      // ignore
     }
   };
 
-  if (status === "loading") {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
@@ -184,7 +209,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!session || user?.role !== "admin") return null;
+  if (!user || user.role !== "admin") return null;
 
   const tabs = [
     { id: "settings" as const, label: "AI Settings" },
@@ -452,7 +477,7 @@ export default function AdminPage() {
                       Edit
                     </button>
                     <button
-                      onClick={() => deletePrompt(prompt.id)}
+                      onClick={() => handleDeletePrompt(prompt.id)}
                       className="rounded px-3 py-1 text-xs text-red-400 transition-colors hover:bg-red-500/10"
                     >
                       {t("app.delete", lang)}
