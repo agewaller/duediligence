@@ -65,7 +65,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           companyName: companyName.trim(),
           promptId,
-          modelId,
+          aiModel: modelId,
           language: reportLang,
           context: context.trim() || undefined,
         }),

@@ -53,22 +53,25 @@ export async function POST(request: Request) {
     }
 
     const userId = (session.user as Record<string, unknown>).id as string;
+    const userRole = (session.user as Record<string, unknown>).role as string;
 
-    // Check active subscription
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId },
-    });
+    // Admin bypasses subscription check
+    if (userRole !== "admin") {
+      const subscription = await prisma.subscription.findUnique({
+        where: { userId },
+      });
 
-    if (
-      !subscription ||
-      subscription.status !== "active" ||
-      (subscription.currentPeriodEnd &&
-        new Date(subscription.currentPeriodEnd) < new Date())
-    ) {
-      return NextResponse.json(
-        { error: "Active subscription required" },
-        { status: 403 }
-      );
+      if (
+        !subscription ||
+        subscription.status !== "active" ||
+        (subscription.currentPeriodEnd &&
+          new Date(subscription.currentPeriodEnd) < new Date())
+      ) {
+        return NextResponse.json(
+          { error: "Active subscription required" },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();
