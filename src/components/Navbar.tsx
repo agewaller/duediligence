@@ -20,7 +20,7 @@ export default function Navbar() {
             href="/"
             className="text-xl font-bold tracking-tight text-white"
           >
-            DueDiligence AI
+            DeepDueDiligence
           </Link>
           {session && (
             <div className="hidden items-center gap-4 sm:flex">

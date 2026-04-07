@@ -13,7 +13,7 @@ export type LangCode = keyof typeof languages;
 
 const translations: Record<LangCode, Record<string, string>> = {
   ja: {
-    "app.title": "DueDiligence AI",
+    "app.title": "DeepDueDiligence",
     "app.subtitle": "世界最強のデューディリジェンス分析プラットフォーム",
     "app.cta": "無料で始める",
     "app.login": "Googleでログイン",
@@ -56,7 +56,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.desc": "実際の分析レポートをご覧ください",
   },
   en: {
-    "app.title": "DueDiligence AI",
+    "app.title": "DeepDueDiligence",
     "app.subtitle": "The World's Most Powerful Due Diligence Platform",
     "app.cta": "Get Started Free",
     "app.login": "Sign in with Google",
@@ -99,7 +99,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.desc": "See real analysis reports in action",
   },
   zh: {
-    "app.title": "DueDiligence AI",
+    "app.title": "DeepDueDiligence",
     "app.subtitle": "全球最强尽职调查分析平台",
     "app.cta": "免费开始",
     "app.login": "Google登录",
@@ -142,7 +142,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.desc": "查看实际分析报告",
   },
   ko: {
-    "app.title": "DueDiligence AI",
+    "app.title": "DeepDueDiligence",
     "app.subtitle": "세계 최강의 실사 분석 플랫폼",
     "app.cta": "무료 시작",
     "app.login": "Google로 로그인",
@@ -185,7 +185,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.desc": "실제 분석 보고서를 확인하세요",
   },
   es: {
-    "app.title": "DueDiligence AI", "app.subtitle": "La plataforma de due diligence más poderosa del mundo",
+    "app.title": "DeepDueDiligence", "app.subtitle": "La plataforma de due diligence más poderosa del mundo",
     "app.cta": "Comenzar gratis", "app.login": "Iniciar sesión con Google", "app.logout": "Cerrar sesión",
     "app.dashboard": "Panel", "app.admin": "Admin", "app.analyze": "Iniciar análisis",
     "app.company": "Nombre de empresa / Ticker", "app.selectPrompt": "Seleccionar prompt",
@@ -205,7 +205,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.title": "Informes de muestra", "landing.samples.desc": "Vea informes de análisis reales",
   },
   fr: {
-    "app.title": "DueDiligence AI", "app.subtitle": "La plateforme de due diligence la plus puissante au monde",
+    "app.title": "DeepDueDiligence", "app.subtitle": "La plateforme de due diligence la plus puissante au monde",
     "app.cta": "Commencer gratuitement", "app.login": "Se connecter avec Google", "app.logout": "Déconnexion",
     "app.dashboard": "Tableau de bord", "app.admin": "Admin", "app.analyze": "Démarrer l'analyse",
     "app.company": "Nom d'entreprise / Ticker", "app.selectPrompt": "Sélectionner le prompt",
@@ -225,7 +225,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.title": "Rapports d'exemple", "landing.samples.desc": "Consultez de vrais rapports d'analyse",
   },
   de: {
-    "app.title": "DueDiligence AI", "app.subtitle": "Die weltweit leistungsstärkste Due-Diligence-Plattform",
+    "app.title": "DeepDueDiligence", "app.subtitle": "Die weltweit leistungsstärkste Due-Diligence-Plattform",
     "app.cta": "Kostenlos starten", "app.login": "Mit Google anmelden", "app.logout": "Abmelden",
     "app.dashboard": "Dashboard", "app.admin": "Admin", "app.analyze": "Analyse starten",
     "app.company": "Firmenname / Ticker", "app.selectPrompt": "Analyse-Prompt wählen",
@@ -245,7 +245,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     "landing.samples.title": "Beispielberichte", "landing.samples.desc": "Sehen Sie echte Analyseberichte",
   },
   pt: {
-    "app.title": "DueDiligence AI", "app.subtitle": "A plataforma de due diligence mais poderosa do mundo",
+    "app.title": "DeepDueDiligence", "app.subtitle": "A plataforma de due diligence mais poderosa do mundo",
     "app.cta": "Começar grátis", "app.login": "Entrar com Google", "app.logout": "Sair",
     "app.dashboard": "Painel", "app.admin": "Admin", "app.analyze": "Iniciar análise",
     "app.company": "Nome da empresa / Ticker", "app.selectPrompt": "Selecionar prompt",

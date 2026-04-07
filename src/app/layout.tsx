@@ -4,7 +4,7 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "DueDiligence AI",
+  title: "DeepDueDiligence",
   description:
     "The world's most powerful due diligence analysis platform powered by AI",
 };
