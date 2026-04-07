@@ -1,11 +1,28 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useLang } from "@/components/LanguageContext";
 import { t } from "@/lib/i18n";
 
 export default function SignInPage() {
   const { lang } = useLang();
+  const { user, loading, signIn } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) router.push("/dashboard");
+  }, [user, loading, router]);
+
+  const handleSignIn = async () => {
+    try {
+      await signIn();
+      router.push("/dashboard");
+    } catch {
+      // user closed popup or error
+    }
+  };
 
   return (
     <div className="flex flex-1 items-center justify-center py-24">
@@ -17,7 +34,7 @@ export default function SignInPage() {
           {t("app.subtitle", lang)}
         </p>
         <button
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          onClick={handleSignIn}
           className="flex w-full items-center justify-center gap-3 rounded-lg bg-white px-6 py-3 font-medium text-gray-800 transition-colors hover:bg-gray-100"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">

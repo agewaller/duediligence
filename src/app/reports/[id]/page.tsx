@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/components/AuthContext";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useLang } from "@/components/LanguageContext";
 import { t } from "@/lib/i18n";
+import { getReport, getFollowUps, updateReport } from "@/lib/firestore";
+import { auth } from "@/lib/firebase";
 
 interface FollowUp {
   id: string;
@@ -29,7 +31,7 @@ interface Report {
 
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const { lang } = useLang();
 
   const [report, setReport] = useState<Report | null>(null);
@@ -38,28 +40,34 @@ export default function ReportPage() {
   const [followUpContext, setFollowUpContext] = useState("");
   const [sending, setSending] = useState(false);
 
-  const user = session?.user as { role?: string } | undefined;
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    fetch(`/api/reports/${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        setReport(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    async function loadReport() {
+      try {
+        const reportData = await getReport(id);
+        if (reportData) {
+          const followUps = await getFollowUps(id);
+          setReport({
+            ...(reportData as Omit<Report, "followUps">),
+            followUps: followUps as FollowUp[],
+          });
+        }
+      } catch {
+        // ignore
+      }
+      setLoading(false);
+    }
+    loadReport();
   }, [id]);
 
   const toggleSample = async () => {
     if (!report) return;
-    const res = await fetch(`/api/reports/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isSample: !report.isSample }),
-    });
-    if (res.ok) {
+    try {
+      await updateReport(id, { isSample: !report.isSample });
       setReport({ ...report, isSample: !report.isSample });
+    } catch {
+      // ignore
     }
   };
 
@@ -67,9 +75,13 @@ export default function ReportPage() {
     if (!followUpQuery.trim()) return;
     setSending(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const res = await fetch(`/api/reports/${id}/followup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           query: followUpQuery.trim(),
           context: followUpContext.trim() || undefined,
@@ -180,7 +192,7 @@ export default function ReportPage() {
       )}
 
       {/* Follow-up Form */}
-      {session && (
+      {user && (
         <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-8">
           <h2 className="mb-4 text-xl font-semibold text-white">
             {t("app.followup", lang)}

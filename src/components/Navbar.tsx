@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "./AuthContext";
 import { useLang } from "./LanguageContext";
 import { t, languages, LangCode } from "@/lib/i18n";
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { user, signIn, signOut } = useAuth();
   const { lang, setLang } = useLang();
 
-  const user = session?.user as { role?: string } | undefined;
   const isAdmin = user?.role === "admin";
 
   return (
@@ -22,7 +21,7 @@ export default function Navbar() {
           >
             DeepDueDiligence
           </Link>
-          {session && (
+          {user && (
             <div className="hidden items-center gap-4 sm:flex">
               <Link
                 href="/dashboard"
@@ -55,7 +54,7 @@ export default function Navbar() {
             ))}
           </select>
 
-          {session ? (
+          {user ? (
             <button
               onClick={() => signOut()}
               className="rounded-md bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-600"
@@ -63,12 +62,12 @@ export default function Navbar() {
               {t("app.logout", lang)}
             </button>
           ) : (
-            <Link
-              href="/auth/signin"
+            <button
+              onClick={() => signIn()}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
             >
               {t("app.login", lang)}
-            </Link>
+            </button>
           )}
         </div>
       </div>
